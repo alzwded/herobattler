@@ -744,6 +744,7 @@ class HeroInstance:
 
     def act(self, enemyc, enemy2, enemy3, hero2, hero3):
         if self.hero.is_dead():
+            raise Exception('{} is dead'.format(self))
             return
         #print('pre-act: ', self, hero2, hero3, enemyc, enemy2, enemy3)
         if self.stats.resource >= 4:
@@ -793,23 +794,20 @@ class Battle:
             return True
         return False
 
-    def maybe_shift_out_player(self):
-        if self.player_party[0].hero.is_dead() and not self.player_party[1].hero.is_dead():
-            self.player_party = self.player_party[1:3] + self.player_party[0:1]
+    def maybe_shift_out_hero(self, party):
+        if party[0].hero.is_dead() and not party[1].hero.is_dead():
+            party[:] = party[1:3] + party[0:1]
             return True
-        elif self.player_party[0].hero.is_dead() and not self.player_party[2].hero.is_dead():
-            self.player_party = self.player_party[2:3] + self.player_party[0:2]
+        elif party[0].hero.is_dead() and not party[2].hero.is_dead():
+            party[:] = party[2:3] + party[0:2]
             return True
         return False
 
+    def maybe_shift_out_player(self):
+        return self.maybe_shift_out_hero(self.player_party)
+
     def maybe_shift_out_enemy(self):
-        if self.enemy_party[0].hero.is_dead() and not self.enemy_party[1].hero.is_dead():
-            self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
-            return True
-        elif self.enemy_party[0].hero.is_dead() and not self.enemy_party[2].hero.is_dead():
-            self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
-            return True
-        return False
+        return self.maybe_shift_out_hero(self.enemy_party)
 
     def attack(self):
         if self.state != BattleState.ONGOING:
