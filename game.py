@@ -512,6 +512,7 @@ class Hero:
         self.color = color
         self.skill = skill
         self.talent = talent
+        self.__is_dead = self.name == '<Nobody>'
 
     def __str__(self):
         return "{} (Rank {} {}): {}/{}".format(
@@ -523,7 +524,7 @@ class Hero:
                )
 
     def is_dead(self):
-        return self.name == '<Nobody>'
+        return self.__is_dead
 
 HEROES = [
     Hero("Saint", 3, Color.YELLOW, Inspire(), Miracle()),
@@ -636,7 +637,7 @@ class HeroInstance:
 
     def __str__(self):
         return "{} *{} +{}: {} ({})".format(
-            self.hero,
+            self.hero if not self.hero.is_dead() else '<Nobody>',
             self.dups,
             self.levels,
             self.stats,
@@ -645,8 +646,8 @@ class HeroInstance:
     def resetBuffs(self):
         self.buffs = Buffs()
 
-    def attack(self, enemy, scale = 1.0, special = False):
-        BASE_DAMAGE=35
+    def __attack(self, enemy, scale = 1.0, special = False):
+        BASE_DAMAGE=45
         if enemy.hero.is_dead():
             return
 
@@ -673,20 +674,20 @@ class HeroInstance:
             enemy.stats.hp = enemy.stats.hpmax
         enemy.stats.resource = enemy.stats.resource + 1
 
-    def skill(self, enemyc, enemy2, enemy3, hero2, hero3):
-        self.skilltalent(self.hero.skill, enemyc, enemy2, enemy3, hero2, hero3)
+    def __skill(self, enemyc, enemy2, enemy3, hero2, hero3):
+        self.__skilltalent(self.hero.skill, enemyc, enemy2, enemy3, hero2, hero3)
         self.stats.resetTurnsUntilSkill()
         self.stats.resource = self.stats.resource + 2
         hero2.stats.resource = hero2.stats.resource + 1
         hero3.stats.resource = hero3.stats.resource + 1
 
-    def talent(self, enemyc, enemy2, enemy3, hero2, hero3):
+    def __talent(self, enemyc, enemy2, enemy3, hero2, hero3):
         #print('pre-skilltalent: ', self, hero2, hero3, enemyc, enemy2, enemy3)
-        self.skilltalent(self.hero.talent, enemyc, enemy2, enemy3, hero2, hero3)
+        self.__skilltalent(self.hero.talent, enemyc, enemy2, enemy3, hero2, hero3)
         self.stats.resource = 0
         #print('post-skilltalent: ', self, hero2, hero3, enemyc, enemy2, enemy3)
 
-    def skilltalent(self, skilltalent, enemyc, enemy2, enemy3, hero2, hero3):
+    def __skilltalent(self, skilltalent, enemyc, enemy2, enemy3, hero2, hero3):
         if skilltalent.target_enemy():
             if skilltalent.aoe():
                 heroes = [(enemyc, 1), (enemy2, 0.5), (enemy3, 0.5)]
@@ -695,7 +696,7 @@ class HeroInstance:
             if skilltalent.hp():
                 for t in heroes:
                     h, m = t
-                    self.attack(h, m, True)
+                    self.__attack(h, m, True)
             if skilltalent.atk():
                 for t in heroes:
                     h, m = t
@@ -720,7 +721,7 @@ class HeroInstance:
             if skilltalent.hp():
                 for t in heroes:
                     h, m = t
-                    self.attack(h, -m, True)
+                    self.__attack(h, -m, True)
             if skilltalent.atk():
                 for t in heroes:
                     h, m = t
@@ -738,8 +739,8 @@ class HeroInstance:
                     h, m = t
                     h.buffs.eva = h.buffs.eva + 1
 
-    def basic_attack(self, enemyc):
-        self.attack(enemyc)
+    def __basic_attack(self, enemyc):
+        self.__attack(enemyc)
         self.stats.turnsUntilSkill = self.stats.turnsUntilSkill - 1
 
     def act(self, enemyc, enemy2, enemy3, hero2, hero3):
@@ -748,11 +749,11 @@ class HeroInstance:
             return
         #print('pre-act: ', self, hero2, hero3, enemyc, enemy2, enemy3)
         if self.stats.resource >= 4:
-            self.talent(enemyc, enemy2, enemy3, hero2, hero3)
+            self.__talent(enemyc, enemy2, enemy3, hero2, hero3)
         elif self.stats.turnsUntilSkill == 0:
-            self.skill(enemyc, enemy2, enemy3, hero2, hero3)
+            self.__skill(enemyc, enemy2, enemy3, hero2, hero3)
         else:
-            self.basic_attack(enemyc)
+            self.__basic_attack(enemyc)
         #print('post-act: ', self, hero2, hero3, enemyc, enemy2, enemy3)
 
 class BattleState(Enum):
@@ -762,39 +763,42 @@ class BattleState(Enum):
 
 class Battle:
     def __init__(self, heroes):
-        self.player_party = heroes[0:3]
-        self.enemy_party = heroes[3:6]
-        self.state = BattleState.ONGOING
+        self.__player_party = heroes[0:3]
+        self.__enemy_party = heroes[3:6]
+        self.__state = BattleState.ONGOING
+
+    def state(self):
+        return self.__state
 
     def check_winloss(self):
-        if self.state != BattleState.ONGOING:
+        if self.__state != BattleState.ONGOING:
             return True
-        if len([x for x in self.enemy_party if not x.hero.is_dead()]) == 0:
-            self.state = BattleState.WON
+        if len([x for x in self.__enemy_party if not x.hero.is_dead()]) == 0:
+            self.__state = BattleState.WON
             return True
-        if len([x for x in self.player_party if not x.hero.is_dead()]) == 0:
-            self.state = BattleState.LOST
+        if len([x for x in self.__player_party if not x.hero.is_dead()]) == 0:
+            self.__state = BattleState.LOST
             return True
         return False
 
-    def enemy_act_1(self):
+    def __enemy_act_1(self):
         n = random.randint(1, 8)
-        if len([x for x in self.enemy_party if not x.hero.is_dead()]) > 1:
-            if n < 2 and not self.enemy_party[1].hero.is_dead():
-                self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
-            elif n < 3 and not self.enemy_party[2].hero.is_dead():
-                self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
+        if len([x for x in self.__enemy_party if not x.hero.is_dead()]) > 1:
+            if n < 2 and not self.__enemy_party[1].hero.is_dead():
+                self.__enemy_party = self.__enemy_party[1:3] + self.__enemy_party[0:1]
+            elif n < 3 and not self.__enemy_party[2].hero.is_dead():
+                self.__enemy_party = self.__enemy_party[2:3] + self.__enemy_party[0:2]
         else:
             n = 8
         return n
 
-    def enemy_act_2(self, n):
+    def __enemy_act_2(self, n):
         if n >= 3:
-            self.enemy_party[0].act(self.player_party[0], self.player_party[1], self.player_party[2], self.enemy_party[1], self.enemy_party[2])
+            self.__enemy_party[0].act(self.__player_party[0], self.__player_party[1], self.__player_party[2], self.__enemy_party[1], self.__enemy_party[2])
             return True
         return False
 
-    def maybe_shift_out_hero(self, party):
+    def __maybe_shift_out_hero(self, party):
         if party[0].hero.is_dead() and not party[1].hero.is_dead():
             party[:] = party[1:3] + party[0:1]
             return True
@@ -803,57 +807,57 @@ class Battle:
             return True
         return False
 
-    def maybe_shift_out_player(self):
-        return self.maybe_shift_out_hero(self.player_party)
+    def __maybe_shift_out_player(self):
+        return self.__maybe_shift_out_hero(self.__player_party)
 
-    def maybe_shift_out_enemy(self):
-        return self.maybe_shift_out_hero(self.enemy_party)
+    def __maybe_shift_out_enemy(self):
+        return self.__maybe_shift_out_hero(self.__enemy_party)
 
     def attack(self):
-        if self.state != BattleState.ONGOING:
+        if self.__state != BattleState.ONGOING:
             return
-        n = self.enemy_act_1()
-        self.player_party[0].act(self.enemy_party[0], self.enemy_party[1], self.enemy_party[2], self.player_party[1], self.player_party[2])
+        n = self.__enemy_act_1()
+        self.__player_party[0].act(self.__enemy_party[0], self.__enemy_party[1], self.__enemy_party[2], self.__player_party[1], self.__player_party[2])
         if self.check_winloss():
             return
 
-        self.maybe_shift_out_enemy()
+        self.__maybe_shift_out_enemy()
 
-        self.enemy_act_2(n)
+        self.__enemy_act_2(n)
         if self.check_winloss():
             return
 
-        self.maybe_shift_out_player()
+        self.__maybe_shift_out_player()
 
     def shift_left(self):
-        if self.player_party[1].hero.is_dead() and not self.player_party[2].hero.is_dead():
+        if self.__player_party[1].hero.is_dead() and not self.__player_party[2].hero.is_dead():
             return self.shift_right()
-        elif self.player_party[1].hero.is_dead() and self.player_party[2].hero.is_dead():
+        elif self.__player_party[1].hero.is_dead() and self.__player_party[2].hero.is_dead():
             return False
-        self.player_party = self.player_party[2:3] + self.player_party[0:2]
+        self.__player_party[:] = self.__player_party[2:3] + self.__player_party[0:2]
 
-        self.enemy_act_2(self.enemy_act_1())
+        self.__enemy_act_2(self.__enemy_act_1())
 
         if self.check_winloss():
             return True
 
-        self.maybe_shift_out_player()
+        self.__maybe_shift_out_player()
 
         return True
 
     def shift_right(self):
-        if self.player_party[2].hero.is_dead() and not self.player_party[1].hero.is_dead():
+        if self.__player_party[2].hero.is_dead() and not self.__player_party[1].hero.is_dead():
             return self.shift_left()
-        elif self.player_party[1].hero.is_dead() and self.player_party[2].hero.is_dead():
+        elif self.__player_party[1].hero.is_dead() and self.__player_party[2].hero.is_dead():
             return False
-        self.player_party = self.player_party[1:3] + self.player_party[0:1]
+        self.__player_party[:] = self.__player_party[1:3] + self.__player_party[0:1]
 
-        self.enemy_act_2(self.enemy_act_1())
+        self.__enemy_act_2(self.__enemy_act_1())
 
         if self.check_winloss():
             return True
 
-        self.maybe_shift_out_player()
+        self.__maybe_shift_out_player()
 
         return True
 
@@ -876,7 +880,7 @@ def main():
         print(h)
     turn = 1
 
-    while battle.state == BattleState.ONGOING:
+    while battle.state() == BattleState.ONGOING:
         n = random.randint(1, 8)
         if n < 2 and not battle.shift_left():
             n = 8
@@ -889,7 +893,7 @@ def main():
         for h in instances:
             print(h)
 
-    if battle.state == BattleState.WON:
+    if battle.state() == BattleState.WON:
         print('player party won')
     else:
         print('enemy party won')
