@@ -539,7 +539,7 @@ HEROES = [
     Hero("Wralock", 2, Color.PURPLE, Weaken(), DarkCloud()),
     Hero("Assassin", 1, Color.PURPLE, Evade(), Backstab()),
     Hero("Sniper", 1, Color.PURPLE, Focus(), Evade()),
-    Hero("Gnuman", 1, Color.PURPLE, AimedShot(), SuppressiveFire()),
+    Hero("Gunman", 1, Color.PURPLE, AimedShot(), SuppressiveFire()),
 
     Hero("Pyromancer", 3, Color.RED, FireArrow(), FireBall()),
     Hero("Templar", 2, Color.RED, ShieldBash(), Whirlwind()),
@@ -868,10 +868,10 @@ def main():
 
     print("Begining fake simulator, as the game isn't built yet")
 
-    h1 = HeroInstance(HEROES[9], 3, 10)
+    h1 = HeroInstance(HEROES[18], 3, 10)
     h2 = HeroInstance(HEROES[1], 2, 5)
     h3 = HeroInstance(HEROES[6], 1, 5)
-    e1 = HeroInstance(HEROES[12], 1, 5)
+    e1 = HeroInstance(HEROES[12], 1, 10)
     e2 = HeroInstance(HEROES[9], 2, 15)
     e3 = HeroInstance(HEROES[7], 1, 5)
     instances = [h1 ,h2, h3, e1, e2, e3]
