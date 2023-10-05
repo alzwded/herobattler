@@ -522,6 +522,9 @@ class Hero:
                 self.talent
                )
 
+    def is_dead(self):
+        return self.name == '<Nobody>'
+
 HEROES = [
     Hero("Saint", 3, Color.YELLOW, Inspire(), Miracle()),
     Hero("Priest", 2, Color.YELLOW, Shield(), Miracle()),
@@ -644,7 +647,7 @@ class HeroInstance:
 
     def attack(self, enemy, scale = 1.0, special = False):
         BASE_DAMAGE=35
-        if enemy.hero.name == '<Nobody>':
+        if enemy.hero.is_dead():
             return
 
         color_modifier = COLOR_MODIFIERS[self.hero.color][enemy.hero.color]
@@ -740,7 +743,7 @@ class HeroInstance:
         self.stats.turnsUntilSkill = self.stats.turnsUntilSkill - 1
 
     def act(self, enemyc, enemy2, enemy3, hero2, hero3):
-        if self.hero.name == '<Nobody>':
+        if self.hero.is_dead():
             return
         #print('pre-act: ', self, hero2, hero3, enemyc, enemy2, enemy3)
         if self.stats.resource >= 4:
@@ -765,94 +768,95 @@ class Battle:
     def check_winloss(self):
         if self.state != BattleState.ONGOING:
             return True
-        if len([x for x in self.enemy_party if x.hero.name != '<Nobody>']) == 0:
+        if len([x for x in self.enemy_party if not x.hero.is_dead()]) == 0:
             self.state = BattleState.WON
             return True
-        if len([x for x in self.player_party if x.hero.name != '<Nobody>']) == 0:
+        if len([x for x in self.player_party if not x.hero.is_dead()]) == 0:
             self.state = BattleState.LOST
+            return True
+        return False
+
+    def enemy_act_1(self):
+        n = random.randint(1, 8)
+        if len([x for x in self.enemy_party if not x.hero.is_dead()]) > 1:
+            if n < 2 and not self.enemy_party[1].hero.is_dead():
+                self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
+            elif n < 3 and not self.enemy_party[2].hero.is_dead():
+                self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
+        else:
+            n = 8
+        return n
+
+    def enemy_act_2(self, n):
+        if n >= 3:
+            self.enemy_party[0].act(self.player_party[0], self.player_party[1], self.player_party[2], self.enemy_party[1], self.enemy_party[2])
+            return True
+        return False
+
+    def maybe_shift_out_player(self):
+        if self.player_party[0].hero.is_dead() and not self.player_party[1].hero.is_dead():
+            self.player_party = self.player_party[1:3] + self.player_party[0:1]
+            return True
+        elif self.player_party[0].hero.is_dead() and not self.player_party[2].hero.is_dead():
+            self.player_party = self.player_party[2:3] + self.player_party[0:2]
+            return True
+        return False
+
+    def maybe_shift_out_enemy(self):
+        if self.enemy_party[0].hero.is_dead() and not self.enemy_party[1].hero.is_dead():
+            self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
+            return True
+        elif self.enemy_party[0].hero.is_dead() and not self.enemy_party[2].hero.is_dead():
+            self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
             return True
         return False
 
     def attack(self):
         if self.state != BattleState.ONGOING:
             return
-        n = random.randint(1, 8)
-        if len([x for x in self.enemy_party if x.hero.name != '<Nobody>']) > 1:
-            if n < 2 and self.enemy_party[1].hero.name != '<Nobody>':
-                self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
-            elif n < 3 and self.enemy_party[2].hero.name != '<Nobody>':
-                self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
-        else:
-            n = 8
+        n = self.enemy_act_1()
         self.player_party[0].act(self.enemy_party[0], self.enemy_party[1], self.enemy_party[2], self.player_party[1], self.player_party[2])
         if self.check_winloss():
             return
 
-        if self.enemy_party[0].hero.name == '<Nobody>' and self.enemy_party[1].hero.name != '<Nobody>':
-            self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
-        elif self.enemy_party[0].hero.name == '<Nobody>' and self.enemy_party[2].hero.name != '<Nobody>':
-            self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
+        self.maybe_shift_out_enemy()
 
-        if n >= 3:
-            self.enemy_party[0].act(self.player_party[0], self.player_party[1], self.player_party[2], self.enemy_party[1], self.enemy_party[2])
+        self.enemy_act_2(n)
         if self.check_winloss():
             return
 
-        if self.player_party[0].hero.name == '<Nobody>' and self.player_party[1].hero.name != '<Nobody>':
-            self.player_party = self.player_party[1:3] + self.player_party[0:1]
-        elif self.player_party[0].hero.name == '<Nobody>' and self.player_party[2].hero.name != '<Nobody>':
-            self.player_party = self.player_party[2:3] + self.player_party[0:2]
+        self.maybe_shift_out_player()
 
     def shift_left(self):
-        if self.player_party[1].hero.name == '<Nobody>' and self.player_party[2].hero.name != '<Nobody>':
+        if self.player_party[1].hero.is_dead() and not self.player_party[2].hero.is_dead():
             return self.shift_right()
-        elif self.player_party[1].hero.name == '<Nobody>' and self.player_party[2].hero.name == '<Nobody>':
+        elif self.player_party[1].hero.is_dead() and self.player_party[2].hero.is_dead():
             return False
         self.player_party = self.player_party[2:3] + self.player_party[0:2]
 
-        n = random.randint(1, 8)
-        if len([x for x in self.enemy_party if x.hero.name != '<Nobody>']) > 1:
-            if n < 2 and self.enemy_party[1].hero.name != '<Nobody>':
-                self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
-            elif n < 3 and self.enemy_party[2].hero.name != '<Nobody>':
-                self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
-        else:
-            n = 8
-        if n >= 3:
-            self.enemy_party[0].act(self.player_party[0], self.player_party[1], self.player_party[2], self.enemy_party[1], self.enemy_party[2])
+        self.enemy_act_2(self.enemy_act_1())
+
         if self.check_winloss():
             return True
 
-        if self.player_party[0].hero.name == '<Nobody>' and self.player_party[1].hero.name != '<Nobody>':
-            self.player_party = self.player_party[1:3] + self.player_party[0:1]
-        elif self.player_party[0].hero.name == '<Nobody>' and self.player_party[2].hero.name != '<Nobody>':
-            self.player_party = self.player_party[2:3] + self.player_party[0:2]
+        self.maybe_shift_out_player()
+
         return True
 
     def shift_right(self):
-        if self.player_party[2].hero.name == '<Nobody>' and self.player_party[1].hero.name != '<Nobody>':
+        if self.player_party[2].hero.is_dead() and not self.player_party[1].hero.is_dead():
             return self.shift_left()
-        elif self.player_party[1].hero.name == '<Nobody>' and self.player_party[2].hero.name == '<Nobody>':
+        elif self.player_party[1].hero.is_dead() and self.player_party[2].hero.is_dead():
             return False
         self.player_party = self.player_party[1:3] + self.player_party[0:1]
 
-        n = random.randint(1, 8)
-        if len([x for x in self.enemy_party if x.hero.name != '<Nobody>']) > 1:
-            if n < 2 and self.enemy_party[1].hero.name != '<Nobody>':
-                self.enemy_party = self.enemy_party[1:3] + self.enemy_party[0:1]
-            elif n < 3 and self.enemy_party[2].hero.name != '<Nobody>':
-                self.enemy_party = self.enemy_party[2:3] + self.enemy_party[0:2]
-        else:
-            n = 8
-        if n >= 3:
-            self.enemy_party[0].act(self.player_party[0], self.player_party[1], self.player_party[2], self.enemy_party[1], self.enemy_party[2])
+        self.enemy_act_2(self.enemy_act_1())
+
         if self.check_winloss():
             return True
 
-        if self.player_party[0].hero.name == '<Nobody>' and self.player_party[1].hero.name != '<Nobody>':
-            self.player_party = self.player_party[1:3] + self.player_party[0:1]
-        elif self.player_party[0].hero.name == '<Nobody>' and self.player_party[2].hero.name != '<Nobody>':
-            self.player_party = self.player_party[2:3] + self.player_party[0:2]
+        self.maybe_shift_out_player()
+
         return True
 
 def main():
