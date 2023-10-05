@@ -603,8 +603,8 @@ class Stats:
         self.hp = self.hpmax
         self.turnsUntilSkill = random.randint(2, 3)
         self.resource = 0
-        self.atk = (10 + levels - 1) * sqrt(rank) * duppow
-        self.dfn = (10 + levels - 1) * sqrt(rank) * duppow
+        self.atk = (35 + levels - 1) * sqrt(rank) * duppow
+        self.dfn = (35 + levels - 1) * sqrt(rank) * duppow
         self.eva = 25 #%
         self.crit = 25 #%
 
@@ -647,7 +647,8 @@ class HeroInstance:
         self.buffs = Buffs()
 
     def __attack(self, enemy, scale = 1.0, special = False):
-        BASE_DAMAGE=45
+        #BASE_DAMAGE=self.stats.hpmax * 0.35
+        BASE_DAMAGE=self.stats.atk
         if enemy.hero.is_dead():
             return
 
