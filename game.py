@@ -611,7 +611,7 @@ class Stats:
     def __str__(self):
         return "{:.0f}/{:.0f}hp {}/3sk {}/4tl {:.0f}a {:.0f}d {:.0f}e {:.0f}c".format(
             self.hp, self.hpmax,
-            4 - self.turnsUntilSkill,
+            3 - self.turnsUntilSkill,
             self.resource,
             self.atk,
             self.dfn,
