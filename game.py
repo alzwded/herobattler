@@ -866,6 +866,8 @@ def main():
     for h in HEROES:
         print(h)
 
+    print("Begining fake simulator, as the game isn't built yet")
+
     h1 = HeroInstance(HEROES[9], 3, 10)
     h2 = HeroInstance(HEROES[1], 2, 5)
     h3 = HeroInstance(HEROES[6], 1, 5)
